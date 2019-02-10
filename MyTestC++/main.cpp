@@ -76,7 +76,7 @@ void mark(marks* m, int val, int index)
 
 int main()
 {
-
+	
 
 	system("pause");
 	return 0;
