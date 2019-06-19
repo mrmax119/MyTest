@@ -1,84 +1,116 @@
 ﻿#include <iostream>
 
+
 using namespace std;
 
-typedef enum Types
+typedef enum access
 {
-	INT,
-	DOUBLE,
-	TWIN
-} T;
+	READ_ONLY = 0,
+	READ_WRITE,
+	READ_ADMIN,
+	READ_WRITE_ADMIN,
+	READ_WRITE_OS
+} access_t;
 
-typedef struct
+typedef struct Heap
 {
-	int x;
-	double y;
-} twin;
+	void* data = nullptr;
+	bool isMark = false;
+	bool isBusy = false;
+	access_t access = READ_WRITE;
+} heap_t;
 
-void* setAddr(T type)
+typedef struct Stack
 {
-	void* x = nullptr;
+	void* data;
+	struct Stack* pNext;
+} stack_t;
 
-	if (type == INT)
+const static size_t HEAP_MAX_SIZE = 255;
+const static size_t STACK_MAX_SIZE = 127;
+
+typedef struct VirtualMemory
+{
+	heap_t heap[HEAP_MAX_SIZE];
+	stack_t stack[STACK_MAX_SIZE];
+	size_t heapCurSize = 0;
+	size_t stackCurSize = 0;
+	
+	void freeHeap(size_t index);
+	void addHeap(void* data, access_t access);
+} VM;
+
+
+void test1()
+{
+	VM vm;
+
+	for (size_t i = 0; i < 10; i++)
 	{
-		x = (int*)malloc(sizeof(int));
+		vm.addHeap((void*)i, READ_WRITE);
 	}
-	else if (type == DOUBLE)
+
+	vm.heap[4].isMark = true;
+
+	for (size_t i = 0; i < vm.heapCurSize; i++)
 	{
-		x = (double*)malloc(sizeof(double));
-	}
-	else if (type == TWIN)
-	{
-		x = (twin*)malloc(sizeof(twin));
+		vm.freeHeap(i);
 	}
 
-	return x;
-}
-
-void setInt(int* var, int val)
-{
-	*var = val;
-}
-
-void setDouble(double* var, double val)
-{
-	*var = val;
-}
-
-void setTwin(twin* var, int val1, double val2)
-{
-	var->x = val1;
-	var->y = val2;
-}
-
-void del(void* block)
-{
-	free(block);
-}
-
-typedef struct
-{
-	int* addr;
-	int value;
-	bool isMarked;
-} marks;
-
-void mark(marks* m, int val, int index)
-{
-	//m[index].addr = &val;
-	//m[index].value = val;
-	m[index].isMarked = true;
-	std::cout << &m[index].addr << std::endl;
-	std::cout << m[index].value << std::endl;
-	std::cout << m[index].isMarked << std::endl;
-	std::cout << index << std::endl;
+	vm.addHeap((void*)"str", READ_WRITE);
 }
 
 int main()
 {
-	
+
 
 	system("pause");
 	return 0;
 }
 
+void VirtualMemory::addHeap(void* data, access_t access)
+{
+	if (heapCurSize >= HEAP_MAX_SIZE)
+		return;
+
+	if (heapCurSize != 0)
+	{
+		for (size_t i = 1; i < heapCurSize + 1; i++)
+		{
+			if (!(heap[i].isBusy) && !(heap[i].isMark) && (heap[i].access == READ_WRITE))
+			{
+				heap[i].isBusy = true;
+				heap[i].data = data;
+
+				if (i == heapCurSize)
+					heapCurSize++;
+
+				break;
+			}
+		}
+	}
+	else
+	{
+		heap[0].isBusy = true;
+		heap[0].data = data;
+		heap[0].access = access;
+		heapCurSize++;
+	}
+	
+}
+
+void VirtualMemory::freeHeap(size_t index)
+{
+	if (heap[index].isMark)
+	{
+		if (index == heapCurSize - 1)
+		{
+			heapCurSize--;
+		}
+
+		heap[index].isMark = false;
+		heap[index].access = READ_WRITE;
+		heap[index].data = nullptr;
+		heap[index].isBusy = false;
+	}
+}
